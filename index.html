@@ -12,7 +12,7 @@
         td, th { border: 1px solid #ddd; padding: 8px; }
         .status { margin: 10px; color: #666; }
     </style>
-    <script src='https://unpkg.com/tesseract.js@v5.1.1/dist/tesseract.min.js'></script>
+    <script src='https://unpkg.com/tesseract.js@v6.0.0/dist/tesseract.min.js'></script>
 </head>
 <body>
     <div class="upload-section">
@@ -44,15 +44,21 @@ const regions = {
 };
 
 let analysisResults = [];
-const worker = Tesseract.createWorker();
+      const worker = await Tesseract.createWorker("eng", 1
+      //                                             , {
+      //     corePath: '../../node_modules/tesseract.js-core',
+      //     workerPath: "/dist/worker.min.js",
+      //     logger: function(m){console.log(m);}
+      //   }
+    );
 
-(async () => {
-    await worker.load();
-    await worker.setParameters({
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD
-    });
-})();
+// (async () => {
+//     await worker.load();
+//     await worker.setParameters({
+//         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+//         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD
+//     });
+// })();
 
 async function analyzeFiles() {
     const files = document.getElementById('fileInput').files;
