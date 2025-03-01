@@ -44,22 +44,34 @@ const regions = {
 };
 
 let analysisResults = [];
-      const worker = await Tesseract.createWorker("eng", 1
-      //                                             , {
-      //     corePath: '../../node_modules/tesseract.js-core',
-      //     workerPath: "/dist/worker.min.js",
-      //     logger: function(m){console.log(m);}
-      //   }
-    );
+<input type="file" id="uploader">
 
-// (async () => {
-//     await worker.load();
-//     await worker.setParameters({
-//         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-//         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD
-//     });
-// })();
+  <div class="row">
+    <div class="column">
+      <p>Input Image</p>
+      <img id="imgInput" style="max-width:500px;">
+    </div>
+    <div class="column">
+      <p>Rotated, Original Color</p>
+      <img id="imgOriginal" style="max-width:500px;">
+    </div>
+    <div class="column">
+      <p>Rotated, Grey</p>
+      <img id="imgGrey" style="max-width:500px;">
+    </div>
+    <div class="column">
+      <p>Rotated, Binary</p>
+      <img id="imgBinary" style="max-width:500px;">
+    </div>
+  </div>
 
+ <script type="module"
+const { createWorker } = Tesseract;
+      const worker = await createWorker("eng", 1, {
+        // corePath: '/node_modules/tesseract.js-core',
+        workerPath: "https://unpkg.com/browse/tesseract.js@6.0.0/dist/worker.min.js",
+        logger: m => console.log(m),
+      });
 async function analyzeFiles() {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return;
