@@ -1,54 +1,131 @@
-<html>
-
+<html lang="en">
 <head>
-  <script src="https://unpkg.com/browse/tesseract.js@6.0.0/dist/tesseract.esm.min.js"></script>
-  <style>
-    .column {
-  float: left;
-  width: 20%;
-  padding: 5px;
+  <script type="text/javascript" src="https://unpkg.com/tesseract.js@6.0.0/dist/tesseract.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Analyzer</title>
+    <style>
+        .hidden { display: none; }
+        .upload-section { margin: 20px; }
+        button { padding: 10px 20px; cursor: pointer; }
+        table { border-collapse: collapse; margin: 20px; }
+        td, th { border: 1px solid #ddd; padding: 8px; }
+        .status { margin: 10px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="upload-section">
+        <input type="file" id="fileInput" multiple accept="image/png, image/jpeg" hidden>
+        <button onclick="document.getElementById('fileInput').click()">Choose PNG files</button>
+        <button onclick="analyzeFiles()" id="analyzeBtn">Analyze deck</button>
+        <div id="status" class="status"></div>
+    </div>
+    
+    <div id="resultsSection" class="hidden">
+        <button onclick="exportToCSV()">Download CSV</button>
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>fileName</th>
+                    <th>createdDate</th>
+                    <th>result</th>
+                    <th>turns</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+
+  <script type="module">
+    const regions = {
+    result: {x1: 160, x2: 430, y1: 264, y2: 330},
+    turns: {x1: 250, x2: 300, y1: 870, y2: 900}
+};
+
+    const { createWorker } = Tesseract;
+    const worker = await createWorker("eng", 1, {
+      // corePath: '/node_modules/tesseract.js-core',
+      workerPath: "https://unpkg.com/tesseract.js@6.0.0/dist/worker.min.js",
+      logger: m => console.log(m),
+    });   
+let analysisResults = [];
+
+window.analyzeFiles = async function analyzeFiles() {
+    const files = document.getElementById('fileInput').files;
+    if (!files.length) return;
+
+    analysisResults = [];
+    document.getElementById('status').textContent = `Processing ${files.length} files...`;
+    
+    for (const file of files) {
+        const img = await createImageBitmap(file);
+        const canvas = document.createElement('canvas');
+        
+        // Process Result region
+        const resultText = await processRegion(img, regions.result);
+        
+        // Process Turns region
+        const turnsText = await processRegion(img, regions.turns);
+
+        analysisResults.push({
+            fileName: file.name,
+            createdDate: new Date(file.lastModified).toISOString(),
+            result: resultText,
+            turns: turnsText
+        });
+    }
+
+    updateTable();
+    document.getElementById('resultsSection').classList.remove('hidden');
+    document.getElementById('status').textContent = 'Analysis complete';
 }
 
-  </style>
-</head>
+async function processRegion(img, region) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = region.x2 - region.x1;
+    canvas.height = region.y2 - region.y1;
+    
+    ctx.drawImage(img, 
+        region.x1, region.y1, canvas.width, canvas.height,
+        0, 0, canvas.width, canvas.height
+    );
 
-<body>
-  <input type="file" id="uploader">
+    const { data: { text } } = await worker.recognize(canvas);
+    return text.trim();
+}
 
-  <div class="row">
-    <div class="column">
-      <p>Input Image</p>
-      <img id="imgInput" style="max-width:500px;">
-    </div>
-    <div class="column">
-      <p>Rotated, Original Color</p>
-      <img id="imgOriginal" style="max-width:500px;">
-    </div>
-    <div class="column">
-      <p>Rotated, Grey</p>
-      <img id="imgGrey" style="max-width:500px;">
-    </div>
-    <div class="column">
-      <p>Rotated, Binary</p>
-      <img id="imgBinary" style="max-width:500px;">
-    </div>
-  </div>
+function updateTable() {
+    const tbody = document.querySelector('#resultsTable tbody');
+    tbody.innerHTML = '';
+    
+    analysisResults.forEach(result => {
+        const row = `<tr>
+            <td>${result.fileName}</td>
+            <td>${result.createdDate}</td>
+            <td>${result.result}</td>
+            <td>${result.turns}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
 
-  <script>
-    const recognize = async ({ target: { files } }) => {
-      document.getElementById("imgInput").src = URL.createObjectURL(files[0]);
-      const worker = await Tesseract.createWorker("eng", 1, {
-        // corePath: '/tesseract-core-simd.wasm.js',
-        workerPath: "https://unpkg.com/browse/tesseract.js@6.0.0/dist/worker.min.js"
-      });
-      const ret = await worker.recognize(files[0], {rotateAuto: true}, {imageColor: true, imageGrey: true, imageBinary: true});
-      document.getElementById("imgOriginal").src = ret.data.imageColor;
-      document.getElementById("imgGrey").src = ret.data.imageGrey;
-      document.getElementById("imgBinary").src = ret.data.imageBinary;
+window.exportToCSV = function exportToCSV() {
+    const csvContent = [
+        ['fileName', 'createdDate', 'result', 'turns'].join(','),
+        ...analysisResults.map(r => 
+            [r.fileName, r.createdDate, r.result, r.turns].join(','))
+    ].join('\n');
 
-    }
-    const elm = document.getElementById('uploader');
-    elm.addEventListener('change', recognize);
+    const blob = new Blob([csvContent], {type: 'text/csv'});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analysis_results.csv';
+    a.click();
+}
   </script>
 </body>
 
